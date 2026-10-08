@@ -21,4 +21,15 @@ public class UserService {
     public List<User> getAllUsers () {
         return userRepository.findAll();
     }
+
+    public User login(String email, String password){
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("No such user found!"));
+        if (!user.getPassword().equals(password)){
+            throw new RuntimeException("Incorrect password");
+        };
+
+    return user;
+    }
+
+    
 }
