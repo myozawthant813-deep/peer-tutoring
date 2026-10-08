@@ -28,10 +28,11 @@ class ApiService {
       body: jsonEncode(user.toJson()),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return User.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception("Failed to create User");
+      throw Exception(
+          "Failed to create User, Error: ${response.statusCode}, ${response.body}");
     }
   }
 

@@ -7,22 +7,23 @@ class User {
   final String major;
   final int year;
   final String bio;
-  final String profilePicture;
+  final String profileImage;
   final String role;
   final int peerScore;
 
-  User(
-      {required this.id,
-      required this.name,
-      required this.email,
-      required this.password,
-      required this.university,
-      required this.major,
-      required this.year,
-      required this.bio,
-      required this.profilePicture,
-      required this.role,
-      required this.peerScore});
+  User({
+    this.id,
+    required this.name,
+    required this.email,
+    required this.password,
+    required this.university,
+    required this.major,
+    required this.year,
+    required this.bio,
+    required this.profileImage,
+    required this.role,
+    required this.peerScore,
+  });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -34,14 +35,13 @@ class User {
         major: json['major'],
         year: json['year'],
         bio: json['bio'],
-        profilePicture: json['profilePicture'] ?? '',
+        profileImage: json['profileImage'] ?? '',
         role: json['role'],
         peerScore: json['peerScore']);
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'name': name,
       'email': email,
       'password': password,
@@ -49,7 +49,7 @@ class User {
       'major': major,
       'year': year,
       'bio': bio,
-      'profilePicture': profilePicture,
+      'profileImage': profileImage,
       'role': role,
       'peerScore': peerScore,
     };
