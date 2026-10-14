@@ -4,17 +4,15 @@ import 'package:http/retry.dart';
 class FeatureCard extends StatelessWidget {
   final IconData icon;
   final String title;
+  final VoidCallback? onTap;
 
-  const FeatureCard({required this.icon, required this.title});
+  const FeatureCard({required this.icon, required this.title, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('$title Coming Soon!')));
-        },
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Column(
           children: [
