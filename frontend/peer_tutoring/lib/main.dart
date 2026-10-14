@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/Services/api_service.dart';
+import 'package:peer_tutoring/pages/auth/login_page.dart';
 import 'package:peer_tutoring/pages/auth/register_page.dart';
 
 void main() {
@@ -13,7 +14,7 @@ class PeerLinkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: RegisterPage(),
+      home: LoginPage(),
     );
   }
 }
