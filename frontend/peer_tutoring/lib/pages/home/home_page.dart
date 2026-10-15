@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/cards/feature_card.dart';
 import 'package:peer_tutoring/models/user.dart';
+import 'package:peer_tutoring/pages/tutors/find_tutors.dart';
 
 class HomePage extends StatelessWidget {
   final User user;
@@ -63,8 +64,18 @@ class HomePage extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  children: const [
-                    FeatureCard(icon: Icons.people, title: 'Find TUtor'),
+                  children: [
+                    FeatureCard(
+                      icon: Icons.people,
+                      title: 'FIND Tutor',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => FindTutorsPage()),
+                        );
+                      },
+                    ),
                     FeatureCard(icon: Icons.groups, title: 'Study Group'),
                     FeatureCard(icon: Icons.menu_book, title: 'Study Material'),
                     FeatureCard(icon: Icons.person_outline, title: 'My Profile')

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/Services/api_service.dart';
 import 'package:peer_tutoring/models/user.dart';
-import 'package:peer_tutoring/pages/home_page.dart';
+import 'package:peer_tutoring/pages/home/home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
