@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/Services/api_service.dart';
 import 'package:peer_tutoring/models/user.dart';
+import 'package:peer_tutoring/pages/profile/student_profile_page.dart';
 
 class FindTutorsPage extends StatefulWidget {
   FindTutorsPage({super.key});
@@ -111,8 +112,10 @@ class _FindTutorsPageState extends State<FindTutorsPage> {
                 size: 16,
               ),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('SElected ${user.name}')));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => StudentProfilePage(user: user)));
               },
             ),
           );
