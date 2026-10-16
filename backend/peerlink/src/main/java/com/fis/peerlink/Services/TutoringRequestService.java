@@ -1,13 +1,17 @@
 package com.fis.peerlink.Services;
 
+import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
+
 import org.springframework.stereotype.Service;
 
 import com.fis.peerlink.Models.TutoringRequest;
 import com.fis.peerlink.Models.User;
 import com.fis.peerlink.Repositories.TutoringRequestRepository;
 import com.fis.peerlink.Repositories.UserRepository;
-
-import jakarta.transaction.Transactional;
 @Service 
 public class TutoringRequestService {
 
@@ -42,4 +46,27 @@ public class TutoringRequestService {
     return requestRepository.save(request);
     
     }
+
+    @Transactional(readOnly = true)
+public List<Map<String, Object>> getRequestsByRequester(
+        Long requesterId) {
+
+    return requestRepository
+            .findByRequester_Id(requesterId)
+            .stream()
+            .map(request -> {
+                Map<String, Object> result = new LinkedHashMap<>();
+
+                result.put("id", request.getId());
+                result.put("tutorId", request.getTutor().getId());
+                result.put("tutorName", request.getTutor().getName());
+                result.put("subject", request.getSubject());
+                result.put("message", request.getMessage());
+                result.put("status", request.getStatus());
+                result.put("createdAt", request.getCreatedAt());
+
+                return result;
+            })
+            .collect(Collectors.toList());
+}
 }
