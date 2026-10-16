@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/models/user.dart';
+import 'package:peer_tutoring/pages/tutors/request_tutoring_page.dart';
 
 class StudentProfilePage extends StatelessWidget {
+  final int requesterId;
   final User user;
   const StudentProfilePage({
     super.key,
     required this.user,
+    required this.requesterId,
   });
 
   @override
@@ -106,8 +109,13 @@ class StudentProfilePage extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Study Request feature coming soon!')));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => RequestTutoringPage(
+                              requesterId: requesterId,
+                              tutorId: user.id!,
+                              tutorName: user.name)));
                 },
                 icon: const Icon(Icons.school),
                 label: const Text("Request Tutoring"),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:peer_tutoring/models/tutoring_request.dart';
 import 'package:peer_tutoring/models/user.dart';
 
 class ApiService {
@@ -62,6 +63,18 @@ class ApiService {
       }).toList();
     } else {
       throw Exception("Failed to retrive Users");
+    }
+  }
+
+  static Future<void> createTutoringRequest(TutoringRequest request) async {
+    final response = await http.post(
+        Uri.parse('$baseUrl/api/tutoring-requests'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(request.toJson()));
+
+    if (response.statusCode != 201) {
+      throw Exception(
+          'Failled to send request ${response.statusCode} ${response.body}');
     }
   }
 }

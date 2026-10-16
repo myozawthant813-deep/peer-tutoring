@@ -27,8 +27,12 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (context) => HomePage(user: user)));
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => HomePage(
+                    user: user,
+                  )));
     } catch (e) {
       if (!mounted) return;
 
