@@ -4,7 +4,8 @@ import 'package:peer_tutoring/models/user.dart';
 import 'package:peer_tutoring/pages/profile/student_profile_page.dart';
 
 class FindTutorsPage extends StatefulWidget {
-  FindTutorsPage({super.key});
+  final int requesterId;
+  const FindTutorsPage({super.key, required this.requesterId});
 
   @override
   State<FindTutorsPage> createState() => _FindTutorsPageState();
@@ -104,7 +105,7 @@ class _FindTutorsPageState extends State<FindTutorsPage> {
               ),
               subtitle: Padding(
                 padding: EdgeInsets.only(top: 6),
-                child: Text('${user.major} - Year ${user.year} /n ${user.bio}'),
+                child: Text('${user.major} - Year ${user.year} \n ${user.bio}'),
               ),
               isThreeLine: true,
               trailing: const Icon(
@@ -115,7 +116,8 @@ class _FindTutorsPageState extends State<FindTutorsPage> {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => StudentProfilePage(user: user)));
+                        builder: (context) => StudentProfilePage(
+                            user: user, requesterId: widget.requesterId)));
               },
             ),
           );

@@ -5,7 +5,10 @@ import 'package:peer_tutoring/pages/tutors/find_tutors.dart';
 
 class HomePage extends StatelessWidget {
   final User user;
-  const HomePage({super.key, required this.user});
+  const HomePage({
+    super.key,
+    required this.user,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -69,10 +72,17 @@ class HomePage extends StatelessWidget {
                       icon: Icons.people,
                       title: 'FIND Tutor',
                       onTap: () {
+                        if (user.id == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text("User Id misssing login again")));
+                          return;
+                        }
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => FindTutorsPage()),
+                              builder: (context) => FindTutorsPage(
+                                    requesterId: user.id!,
+                                  )),
                         );
                       },
                     ),
