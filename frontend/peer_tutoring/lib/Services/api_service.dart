@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:peer_tutoring/models/my_tutoring_request.dart';
 import 'package:peer_tutoring/models/tutoring_request.dart';
 import 'package:peer_tutoring/models/user.dart';
 
@@ -76,5 +77,29 @@ class ApiService {
       throw Exception(
           'Failled to send request ${response.statusCode} ${response.body}');
     }
+  }
+
+  static Future<List<MyTutoringRequest>> getMyRequests(int requesterId) async {
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/api/tutoring-requests/requester/$requesterId',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+
+      return data
+          .map(
+            (json) => MyTutoringRequest.fromJson(
+              json as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    }
+
+    throw Exception(
+      'Failed to load tutoring requests: ${response.statusCode}',
+    );
   }
 }

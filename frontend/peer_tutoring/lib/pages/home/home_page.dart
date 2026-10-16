@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:peer_tutoring/cards/feature_card.dart';
 import 'package:peer_tutoring/models/user.dart';
 import 'package:peer_tutoring/pages/tutors/find_tutors.dart';
+import 'package:peer_tutoring/pages/tutors/my_tutoring_request_page.dart';
 
 class HomePage extends StatelessWidget {
   final User user;
@@ -83,6 +84,20 @@ class HomePage extends StatelessWidget {
                               builder: (context) => FindTutorsPage(
                                     requesterId: user.id!,
                                   )),
+                        );
+                      },
+                    ),
+                    FeatureCard(
+                      icon: Icons.assignment_outlined,
+                      title: 'My Requests',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MyTutoringRequestsPage(
+                              requesterId: user.id!,
+                            ),
+                          ),
                         );
                       },
                     ),
