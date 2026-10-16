@@ -1,85 +1,99 @@
 package com.fis.peerlink.Models;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "tutoring_requests")
+import jakarta.annotation.Generated;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+@Entity 
+@Table (name = "tutoring_request")
 public class TutoringRequest {
 
-@Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
-private Long id;
 
-@ManyToOne
-@JoinColumn(name = "requester_id", nullable = false)
-private User requester;
+    @Id
+    @GeneratedValue (strategy = GenerationType.IDENTITY)
+    private long id;
 
-@ManyToOne
-@JoinColumn(name = "tutor_id", nullable = false)
-private User tutor;
+    @ManyToOne 
+    @JoinColumn (name = "requester_id", nullable = false)
+    private User requester;
 
-@Column(nullable = false)
-private String subject;
+    @ManyToOne 
+    @JoinColumn (name = "tutor_id", nullable = false)
+    private User tutor;
 
-@Column(length = 1000)
-private String message;
+    @Column (nullable = false)
+    private String subject;
 
-@Column(nullable = false)
-private String status = "PENDING";
+    @Column (length = 1000)
+    private String message;
 
-@Column(nullable = false)
-private LocalDateTime createdAt = LocalDateTime.now();
+    @Column (nullable = false)
+    private String status = "PENDING";
 
-public TutoringRequest() {
-}
+    @Column (nullable = false)
+    private LocalDateTime createAt = LocalDateTime.now();
 
-public Long getId() {
-    return id;
-}
 
-public User getRequester() {
-    return requester;
-}
 
-public void setRequester(User requester) {
-    this.requester = requester;
-}
+    public TutoringRequest(){
 
-public User getTutor() {
-    return tutor;
-}
+    }
 
-public void setTutor(User tutor) {
-    this.tutor = tutor;
-}
+    public Long getId(){
+        return id;
+    }
 
-public String getSubject() {
-    return subject;
-}
+    public User getRequester(){
+        return requester;
+    }
 
-public void setSubject(String subject) {
-    this.subject = subject;
-}
+    public void setRequester (User requester){
+        this.requester = requester;
+    }
 
-public String getMessage() {
-    return message;
-}
+    public User getTutor(){
+        return tutor;
+    }
 
-public void setMessage(String message) {
-    this.message = message;
-}
+    public void setTutor(User tutor){
+        this.tutor = tutor;
+    }
+    
+    public String getSubject(){
+        return subject;
+    }
 
-public String getStatus() {
-    return status;
-}
+    public void setSubject(String subject){
+        this.subject = subject;
+    }
 
-public void setStatus(String status) {
-    this.status = status;
-}
 
-public LocalDateTime getCreatedAt() {
-    return createdAt;
-}
+    public String getMessage(){
+        return message;
+    
+    }
 
+    public void setMessage(String message){
+        this.message = message;
+    }
+
+    public String getStatus(){
+        return status;
+    }
+
+    public void setStatus(String status){
+        this.status = status;
+    }
+
+    public LocalDateTime getCreateAt(){
+        return createAt;
+    }
 }
