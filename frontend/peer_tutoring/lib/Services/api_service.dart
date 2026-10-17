@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:peer_tutoring/models/incoming_tutoring_request.dart';
 import 'package:peer_tutoring/models/my_tutoring_request.dart';
 import 'package:peer_tutoring/models/tutoring_request.dart';
+import 'package:peer_tutoring/models/tutoring_session.dart';
 import 'package:peer_tutoring/models/user.dart';
 
 class ApiService {
@@ -147,5 +148,31 @@ class ApiService {
         'Failed to update request: ${response.statusCode} ${response.body}',
       );
     }
+  }
+
+  static Future<Map<String, dynamic>> scheduleTutoringSession(
+    TutoringSession session,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/tutoring-sessions'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(session.toJson()),
+    );
+
+    final responseBody = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return responseBody as Map<String, dynamic>;
+    }
+
+    if (responseBody is Map<String, dynamic>) {
+      throw Exception(
+        responseBody['error'] ?? 'Failed to schedule tutoring session.',
+      );
+    }
+
+    throw Exception('Failed to schedule tutoring session.');
   }
 }
