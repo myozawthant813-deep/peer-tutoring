@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -67,4 +68,44 @@ public ResponseEntity<List<Map<String, Object>>> getMyRequests(
 
     return ResponseEntity.ok(requests);
 }
+@GetMapping("/tutor/{tutorId}")
+public ResponseEntity<List<Map<String, Object>>> getIncomingRequests(
+@PathVariable Long tutorId) {
+
+List<Map<String, Object>> requests =
+        requestService.getRequestsByTutor(tutorId);
+
+return ResponseEntity.ok(requests);
+
+}
+
+@PatchMapping("/{requestId}/status")
+public ResponseEntity<?> updateRequestStatus(
+@PathVariable Long requestId,
+@RequestBody Map<String, Object> body) {
+
+try {
+    Long tutorId = Long.valueOf(body.get("tutorId").toString());
+    String status = body.get("status").toString().trim().toUpperCase();
+
+    TutoringRequest request = requestService.updateRequestStatus(
+            requestId, tutorId, status);
+
+    return ResponseEntity.ok(Map.of(
+            "id", request.getId(),
+            "status", request.getStatus(),
+            "message", "Request status updated successfully."
+    ));
+
+} catch (IllegalArgumentException e) {
+    return ResponseEntity.badRequest().body(
+            Map.of("error", e.getMessage()));
+
+} catch (RuntimeException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            Map.of("error", e.getMessage()));
+}
+
+}
+
 }
