@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:peer_tutoring/models/incoming_tutoring_request.dart';
 import 'package:peer_tutoring/models/my_tutoring_request.dart';
 import 'package:peer_tutoring/models/tutoring_request.dart';
 import 'package:peer_tutoring/models/user.dart';
@@ -101,5 +102,50 @@ class ApiService {
     throw Exception(
       'Failed to load tutoring requests: ${response.statusCode}',
     );
+  }
+
+  static Future<List<IncomingTutoringRequest>> getIncomingRequests(
+    int tutorId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/tutoring-requests/tutor/$tutorId'),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+
+      return data
+          .map(
+            (json) => IncomingTutoringRequest.fromJson(
+              json as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+    }
+
+    throw Exception(
+      'Failed to load incoming requests: ${response.statusCode}',
+    );
+  }
+
+  static Future<void> updateTutoringRequestStatus({
+    required int requestId,
+    required int tutorId,
+    required String status,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/tutoring-requests/$requestId/status'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'tutorId': tutorId,
+        'status': status,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to update request: ${response.statusCode} ${response.body}',
+      );
+    }
   }
 }

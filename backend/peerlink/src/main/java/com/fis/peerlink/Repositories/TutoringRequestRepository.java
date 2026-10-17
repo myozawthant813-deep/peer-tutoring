@@ -7,4 +7,6 @@ public interface TutoringRequestRepository extends JpaRepository<TutoringRequest
 
     List<TutoringRequest> findByRequester_Id(Long requesterId);
 
+    List<TutoringRequest> findByTutor_Id(Long tutorId);
+
 }
