@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:peer_tutoring/pages/tutors/schedule_tutoring_session_page.dart';
 
 import '../../Services/api_service.dart';
 import '../../models/incoming_tutoring_request.dart';
@@ -214,6 +215,32 @@ class _IncomingRequestsPageState extends State<IncomingRequestsPage> {
                             padding: EdgeInsets.only(top: 8),
                             child: LinearProgressIndicator(),
                           ),
+                        if (request.status == 'ACCEPTED') ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: isProcessing
+                                  ? null
+                                  : () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              ScheduleTutoringSessionPage(
+                                            requestId: request.id,
+                                            tutorId: widget.tutorId,
+                                            studentName: request.requesterName,
+                                            subject: request.subject,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              icon: const Icon(Icons.event),
+                              label: const Text('Schedule Session'),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
