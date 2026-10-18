@@ -21,6 +21,13 @@ class _IncomingRequestsPageState extends State<IncomingRequestsPage> {
 
   final Set<int> processingRequests = {};
 
+  final Map<int, Future<bool>> sessionCheck = {};
+
+  Future<bool> checkSession(int requestId) {
+    return sessionCheck.putIfAbsent(
+        requestId, () => ApiService.hasScheduleSession(requestId));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -217,28 +224,82 @@ class _IncomingRequestsPageState extends State<IncomingRequestsPage> {
                           ),
                         if (request.status == 'ACCEPTED') ...[
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: isProcessing
-                                  ? null
-                                  : () {
+                          FutureBuilder<bool>(
+                            future: checkSession(request.id),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const LinearProgressIndicator();
+                              }
+
+                              if (snapshot.hasError) {
+                                return OutlinedButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      sessionCheck.remove(request.id);
+                                    });
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Check Session Status'),
+                                );
+                              }
+
+                              final hasSession = snapshot.data ?? false;
+
+                              if (hasSession) {
+                                return SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) =>
-                                              ScheduleTutoringSessionPage(
-                                            requestId: request.id,
-                                            tutorId: widget.tutorId,
-                                            studentName: request.requesterName,
-                                            subject: request.subject,
+                                              TutoringSessionsPage(
+                                            userId: widget.tutorId,
+                                            isTutor: true,
                                           ),
                                         ),
                                       );
                                     },
-                              icon: const Icon(Icons.event),
-                              label: const Text('Schedule Session'),
-                            ),
+                                    icon: const Icon(Icons.event_available),
+                                    label: const Text('View Sessions'),
+                                  ),
+                                );
+                              }
+
+                              return SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: isProcessing
+                                      ? null
+                                      : () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ScheduleTutoringSessionPage(
+                                                requestId: request.id,
+                                                tutorId: widget.tutorId,
+                                                studentName:
+                                                    request.requesterName,
+                                                subject: request.subject,
+                                              ),
+                                            ),
+                                          );
+
+                                          if (result == true && mounted) {
+                                            setState(() {
+                                              sessionCheck[request.id] =
+                                                  Future.value(true);
+                                            });
+                                          }
+                                        },
+                                  icon: const Icon(Icons.event),
+                                  label: const Text('Schedule Session'),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ],
