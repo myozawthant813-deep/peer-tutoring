@@ -175,4 +175,18 @@ class ApiService {
 
     throw Exception('Failed to schedule tutoring session.');
   }
+
+  static Future<bool> hasScheduleSession(int requestId) async {
+    final response = await http.get(Uri.parse(
+      '$baseUrl/api/tutoring-sessions/request/$requestId',
+    ));
+    if (response.statusCode == 200) {
+      return true;
+    }
+    if (response.statusCode == 404) {
+      return false;
+    }
+
+    throw Exception("failed to check tutoring session!");
+  }
 }
