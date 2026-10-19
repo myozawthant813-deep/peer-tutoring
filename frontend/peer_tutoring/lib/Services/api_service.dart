@@ -189,4 +189,28 @@ class ApiService {
 
     throw Exception("failed to check tutoring session!");
   }
+
+  static Future<List<dynamic>> getTutorSessions(int tutorId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/tutoring-sessions/tutor/$tutorId'),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+    throw Exception(
+      'Failed to load tutor sessions: ${response.statusCode}',
+    );
+  }
+
+  static Future<List<dynamic>> getStudentSessions(int studentId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/tutoring-sessions/student/$studentId'),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+    throw Exception(
+      'Failed to load student sessions: ${response.statusCode}',
+    );
+  }
 }
