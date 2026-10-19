@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/pages/tutors/schedule_tutoring_session_page.dart';
+import 'package:peer_tutoring/pages/tutors/tutoring_sessions_page.dart';
 
 import '../../Services/api_service.dart';
 import '../../models/incoming_tutoring_request.dart';
