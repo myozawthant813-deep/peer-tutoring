@@ -349,4 +349,106 @@ class ApiService {
       'Failed to load study group: ${response.statusCode}',
     );
   }
+
+// Get all study materials
+  static Future<List<dynamic>> getStudyMaterials() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/study-materials'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception('Failed to load study materials');
+  }
+
+// Search study materials by subject
+  static Future<List<dynamic>> searchStudyMaterials(String subject) async {
+    final uri = Uri.parse('$baseUrl/api/study-materials').replace(
+      queryParameters: {'subject': subject},
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception('Failed to search study materials');
+  }
+
+// Get one study material
+  static Future<Map<String, dynamic>> getStudyMaterialById(int id) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/study-materials/$id'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception('Failed to load study material');
+  }
+
+// Get materials uploaded by a user
+  static Future<List<dynamic>> getMyStudyMaterials(int userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/study-materials/user/$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception('Failed to load your study materials');
+  }
+
+// Create a study material
+  static Future<Map<String, dynamic>> createStudyMaterial({
+    required String title,
+    required String description,
+    required String subject,
+    required String fileUrl,
+    required int uploadedById,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/study-materials'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'title': title,
+        'description': description,
+        'subject': subject,
+        'fileUrl': fileUrl,
+        'uploadedById': uploadedById,
+      }),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to create study material: ${response.body}',
+    );
+  }
+
+  static Future<void> deleteStudyMaterial({
+    required int materialId,
+    required int userId,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/study-materials/$materialId',
+    ).replace(
+      queryParameters: {'userId': userId.toString()},
+    );
+
+    final response = await http.delete(uri);
+
+    if (response.statusCode != 204) {
+      throw Exception(
+        'Failed to delete study material: ${response.body}',
+      );
+    }
+  }
 }

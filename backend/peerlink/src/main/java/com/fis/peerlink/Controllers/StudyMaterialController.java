@@ -55,4 +55,31 @@ public class StudyMaterialController {
 
         return materialService.getMaterialsByUser(userId);
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMaterial(
+            @PathVariable Long id,
+            @RequestParam Long userId) {
+
+        materialService.deleteMaterial(id, userId);
+    }
+
+@PutMapping("/{id}")
+public Map<String, Object> updateMaterial(
+        @PathVariable Long id,
+        @RequestParam Long userId,
+        @RequestBody Map<String, Object> request) {
+
+    return materialService.updateMaterial(
+            id,
+            userId,
+            (String) request.get("title"),
+            (String) request.get("description"),
+            (String) request.get("subject"),
+            (String) request.get("fileUrl")
+    );
+}
+
+
 }
