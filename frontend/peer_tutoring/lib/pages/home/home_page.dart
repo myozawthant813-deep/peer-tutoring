@@ -5,6 +5,7 @@ import 'package:peer_tutoring/cards/feature_card.dart';
 import 'package:peer_tutoring/models/user.dart';
 import 'package:peer_tutoring/pages/auth/login_page.dart';
 import 'package:peer_tutoring/pages/study_group_page.dart';
+import 'package:peer_tutoring/pages/study_materials_page.dart';
 import 'package:peer_tutoring/pages/tutors/find_tutors.dart';
 import 'package:peer_tutoring/pages/tutors/incoming_request_page.dart';
 import 'package:peer_tutoring/pages/tutors/my_tutoring_request_page.dart';
@@ -165,9 +166,17 @@ class HomePage extends StatelessWidget {
                       );
                     },
                   ),
-                  const FeatureCard(
+                  FeatureCard(
                     icon: Icons.menu_book,
                     title: 'Study Material',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StudyMaterialsPage(),
+                        ),
+                      );
+                    },
                   ),
                   const FeatureCard(
                     icon: Icons.person_outline,

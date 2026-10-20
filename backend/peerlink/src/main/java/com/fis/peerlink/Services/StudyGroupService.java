@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.fis.peerlink.Models.GroupMember;
 import com.fis.peerlink.Models.StudyGroup;
+import com.fis.peerlink.Models.StudyMaterial;
 import com.fis.peerlink.Models.User;
 import com.fis.peerlink.Repositories.GroupMemberRepository;
 import com.fis.peerlink.Repositories.StudyGroupsRepository;
@@ -205,4 +206,6 @@ public class StudyGroupService {
 
         return result;
     };
+
+
 }
