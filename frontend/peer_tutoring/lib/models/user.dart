@@ -27,24 +27,25 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-        id: json['id'],
-        name: json['name'],
-        email: json['email'],
-        password: json['password'],
-        university: json['university'],
-        major: json['major'],
-        year: json['year'],
-        bio: json['bio'],
-        profileImage: json['profileImage'] ?? '',
-        role: json['role'],
-        peerScore: json['peerScore']);
+      id: json['id'] == null ? null : int.tryParse(json['id'].toString()),
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      password: json['password'] ?? '',
+      university: json['university'] ?? '',
+      major: json['major'] ?? '',
+      year: int.tryParse(json['year'].toString()) ?? 0,
+      bio: json['bio'] ?? '',
+      profileImage: json['profileImage'] ?? '',
+      role: json['role'] ?? 'STUDENT',
+      peerScore: int.tryParse(json['peerScore'].toString()) ?? 0,
+    );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'email': email,
-      'password': password,
       'university': university,
       'major': major,
       'year': year,
