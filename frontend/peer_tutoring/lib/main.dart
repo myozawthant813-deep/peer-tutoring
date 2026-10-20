@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:peer_tutoring/Services/api_service.dart';
+import 'package:peer_tutoring/Services/auth_session.dart';
 import 'package:peer_tutoring/pages/auth/login_page.dart';
-import 'package:peer_tutoring/pages/auth/register_page.dart';
+import 'package:peer_tutoring/pages/home/home_page.dart';
+import 'package:peer_tutoring/models/user.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const PeerLinkApp());
 }
 
@@ -14,55 +16,53 @@ class PeerLinkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+      home: const SessionCheckPage(),
     );
   }
 }
 
-class ConnectionPage extends StatefulWidget {
-  const ConnectionPage({super.key});
+class SessionCheckPage extends StatefulWidget {
+  const SessionCheckPage({super.key});
 
   @override
-  State<ConnectionPage> createState() => _ConnectionPageState();
+  State<SessionCheckPage> createState() => _SessionCheckPageState();
 }
 
-class _ConnectionPageState extends State<ConnectionPage> {
-  String message = 'Connnecting.....';
-  final ApiService api = ApiService();
+class _SessionCheckPageState extends State<SessionCheckPage> {
+  User? currentUser;
+  bool isLoading = true;
 
+  @override
   void initState() {
     super.initState();
-    testBackend();
+    checkSession();
   }
 
-  Future<void> testBackend() async {
-    try {
-      final result = await ApiService.testConnection();
+  Future<void> checkSession() async {
+    final user = await AuthSession.getUser();
 
-      setState(() {
-        message = result;
-      });
-    } catch (e) {
-      setState(() {
-        message = "Connection error: $e";
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      currentUser = user;
+      isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Test Connection"),
-      ),
-      body: Center(
-        child: Text(
-          message,
-          style: TextStyle(
-            fontSize: 28,
-          ),
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
         ),
-      ),
-    );
+      );
+    }
+
+    if (currentUser != null && currentUser!.id != null) {
+      return HomePage(user: currentUser!);
+    }
+
+    return const LoginPage();
   }
 }

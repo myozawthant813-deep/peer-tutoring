@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/Services/api_service.dart';
+import 'package:peer_tutoring/Services/auth_session.dart';
 import 'package:peer_tutoring/models/user.dart';
 import 'package:peer_tutoring/pages/home/home_page.dart';
 
@@ -12,37 +13,51 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
+
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
 
-  Future<void> Login() async {
+  Future<void> login() async {
+    if (isLoading) return;
+
     setState(() {
       isLoading = true;
     });
 
     try {
+      // Authenticate with Spring Boot.
       final User user = await ApiService.login(
-          emailController.text.trim(), passwordController.text);
+        emailController.text.trim(),
+        passwordController.text,
+      );
+
+      // Save the authenticated user's information.
+      await AuthSession.saveUser(user);
 
       if (!mounted) return;
 
+      // Navigate to HomePage.
       Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => HomePage(
-                    user: user,
-                  )));
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(user: user),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Login failed $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login failed: $e'),
+        ),
+      );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -50,7 +65,6 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
-
     super.dispose();
   }
 
@@ -58,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("LOGIN"),
+        title: const Text('LOGIN'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(40),
@@ -66,35 +80,38 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             TextField(
               controller: emailController,
+              keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                labelText: "email",
+                labelText: 'Email',
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(
-              height: 20,
-            ),
+            const SizedBox(height: 20),
             TextField(
               controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: "password",
+                labelText: 'Password',
                 border: OutlineInputBorder(),
               ),
+              onSubmitted: (_) => login(),
             ),
-            const SizedBox(
-              height: 20,
-            ),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                  onPressed: () {
-                    isLoading ? null : Login();
-                  },
-                  child: isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text("Login")),
-            )
+                onPressed: isLoading ? null : login,
+                child: isLoading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Login'),
+              ),
+            ),
           ],
         ),
       ),

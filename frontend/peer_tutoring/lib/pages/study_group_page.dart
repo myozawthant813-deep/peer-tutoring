@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:peer_tutoring/Services/auth_session.dart';
+import 'package:peer_tutoring/models/user.dart';
+import 'package:peer_tutoring/pages/create_study_group_page.dart';
+import 'package:peer_tutoring/pages/study_group_deatils_page.dart';
 import '../Services/api_service.dart';
 
 class StudyGroupsPage extends StatefulWidget {
-  final int userId;
-
   const StudyGroupsPage({
     super.key,
-    required this.userId,
   });
 
   @override
@@ -24,6 +25,29 @@ class _StudyGroupsPageState extends State<StudyGroupsPage> {
   void initState() {
     super.initState();
     loadGroups();
+    loadCurrentUser();
+  }
+
+  User? currentUser;
+  bool isLoadingUser = true;
+
+  Future<void> loadCurrentUser() async {
+    final user = await AuthSession.getUser();
+
+    if (!mounted) return;
+
+    setState(() {
+      currentUser = user;
+      isLoadingUser = false;
+    });
+
+    if (user == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to access study groups.'),
+        ),
+      );
+    }
   }
 
   Future<void> loadGroups({String subject = ''}) async {
@@ -104,12 +128,30 @@ class _StudyGroupsPageState extends State<StudyGroupsPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Create Group page is coming next!'),
+        onPressed: () async {
+          final user = currentUser;
+
+          if (user == null || user.id == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please log in again.'),
+              ),
+            );
+            return;
+          }
+
+          final created = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreateStudyGroupPage(
+                userId: user.id!,
+              ),
             ),
           );
+
+          if (created == true && mounted) {
+            loadGroups(subject: searchController.text);
+          }
         },
         icon: const Icon(Icons.add),
         label: const Text('Create Group'),
@@ -222,13 +264,30 @@ class _StudyGroupsPageState extends State<StudyGroupsPage> {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Selected group ID: ${group['id']}',
+                final user = currentUser;
+
+                if (user == null || user.id == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please log in again.'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudyGroupDetailsPage(
+                      groupId: int.parse(group['id'].toString()),
+                      userId: user.id!,
                     ),
                   ),
-                );
+                ).then((_) {
+                  if (mounted) {
+                    loadGroups(subject: searchController.text);
+                  }
+                });
               },
             ),
           );
