@@ -213,4 +213,140 @@ class ApiService {
       'Failed to load student sessions: ${response.statusCode}',
     );
   }
+
+  static Future<List<dynamic>> getStudyGroups() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/study-groups'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception(
+      'Failed to load study groups: ${response.statusCode}',
+    );
+  }
+
+// Search study groups by subject
+  static Future<List<dynamic>> searchStudyGroups(
+    String subject,
+  ) async {
+    final uri = Uri.parse('$baseUrl/api/study-groups').replace(
+      queryParameters: {'subject': subject},
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception(
+      'Failed to search study groups: ${response.statusCode}',
+    );
+  }
+
+// Create a study group
+  static Future<Map<String, dynamic>> createStudyGroup({
+    required String name,
+    required String subject,
+    required String description,
+    required int creatorId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/study-groups'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'subject': subject,
+        'description': description,
+        'creatorId': creatorId,
+      }),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to create study group: ${response.body}',
+    );
+  }
+
+// Join a study group
+  static Future<Map<String, dynamic>> joinStudyGroup({
+    required int groupId,
+    required int userId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/study-groups/$groupId/join'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to join study group: ${response.body}',
+    );
+  }
+
+// Leave a study group
+  static Future<Map<String, dynamic>> leaveStudyGroup({
+    required int groupId,
+    required int userId,
+  }) async {
+    final response = await http.delete(
+      Uri.parse(
+        '$baseUrl/api/study-groups/$groupId/leave/$userId',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to leave study group: ${response.body}',
+    );
+  }
+
+// Get members of a study group
+  static Future<List<dynamic>> getStudyGroupMembers(
+    int groupId,
+  ) async {
+    final response = await http.get(
+      Uri.parse(
+        '$baseUrl/api/study-groups/$groupId/members',
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception(
+      'Failed to load group members: ${response.statusCode}',
+    );
+  }
+
+// Get details of one study group
+  static Future<Map<String, dynamic>> getStudyGroupDetails(
+    int groupId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/study-groups/$groupId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to load study group: ${response.statusCode}',
+    );
+  }
 }
