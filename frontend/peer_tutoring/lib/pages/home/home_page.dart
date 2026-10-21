@@ -4,6 +4,7 @@ import 'package:peer_tutoring/Services/auth_session.dart';
 import 'package:peer_tutoring/cards/feature_card.dart';
 import 'package:peer_tutoring/models/user.dart';
 import 'package:peer_tutoring/pages/auth/login_page.dart';
+import 'package:peer_tutoring/pages/my_profile_page.dart';
 import 'package:peer_tutoring/pages/study_group_page.dart';
 import 'package:peer_tutoring/pages/study_materials_page.dart';
 import 'package:peer_tutoring/pages/tutors/find_tutors.dart';
@@ -178,9 +179,17 @@ class HomePage extends StatelessWidget {
                       );
                     },
                   ),
-                  const FeatureCard(
+                  FeatureCard(
                     icon: Icons.person_outline,
                     title: 'My Profile',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MyProfilePage(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

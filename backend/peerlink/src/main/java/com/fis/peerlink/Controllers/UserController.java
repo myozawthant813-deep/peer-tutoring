@@ -1,14 +1,12 @@
 package com.fis.peerlink.Controllers;
 
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.web.bind.annotation.*;
 
 import com.fis.peerlink.Models.User;
 import com.fis.peerlink.Services.UserService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 
@@ -40,6 +38,21 @@ public class UserController {
             user.getEmail(), 
             user.getPassword());
     }
+
+@PutMapping("/{id}/profile")
+public User updateProfile(
+        @PathVariable Long id,
+        @RequestBody Map<String, Object> request) {
+
+    return userService.updateProfile(id, request);
+}
+
+@GetMapping("/{id}")
+public User getUserById(@PathVariable Long id) {
+    return userService.getUserById(id);
+}
+
+
 
     
 }

@@ -451,4 +451,91 @@ class ApiService {
       );
     }
   }
+
+  static Future<Map<String, dynamic>> updateStudyMaterial({
+    required int materialId,
+    required int userId,
+    required String title,
+    required String description,
+    required String subject,
+    required String fileUrl,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/study-materials/$materialId',
+    ).replace(
+      queryParameters: {
+        'userId': userId.toString(),
+      },
+    );
+
+    final response = await http.put(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'title': title,
+        'description': description,
+        'subject': subject,
+        'fileUrl': fileUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to update study material: ${response.body}',
+    );
+  }
+
+  static Future<Map<String, dynamic>> getUserProfile(
+    int userId,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/users/$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to load profile: ${response.body}',
+    );
+  }
+
+  static Future<Map<String, dynamic>> updateUserProfile({
+    required int userId,
+    required String name,
+    required String university,
+    required String major,
+    required int year,
+    required String bio,
+    required String profileImage,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/users/$userId/profile'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'university': university,
+        'major': major,
+        'year': year,
+        'bio': bio,
+        'profileImage': profileImage,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+
+    throw Exception(
+      'Failed to update profile: ${response.body}',
+    );
+  }
 }
