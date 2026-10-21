@@ -295,6 +295,158 @@ class _StudyMaterialsPageState extends State<StudyMaterialsPage> {
     );
   }
 
+  Future<void> editMaterial(
+    Map<String, dynamic> material,
+  ) async {
+    final userId = await AuthSession.getUserId();
+
+    if (!mounted) return;
+
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to edit materials.'),
+        ),
+      );
+      return;
+    }
+
+    if (userId.toString() != material['uploadedById'].toString()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can only edit your own materials.'),
+        ),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController(
+      text: material['title']?.toString() ?? '',
+    );
+    final subjectController = TextEditingController(
+      text: material['subject']?.toString() ?? '',
+    );
+    final descriptionController = TextEditingController(
+      text: material['description']?.toString() ?? '',
+    );
+    final fileUrlController = TextEditingController(
+      text: material['fileUrl']?.toString() ?? '',
+    );
+
+    final formKey = GlobalKey<FormState>();
+
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit Study Material'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter a title'
+                        : null,
+                  ),
+                  TextFormField(
+                    controller: subjectController,
+                    decoration: const InputDecoration(
+                      labelText: 'Subject',
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter a subject'
+                        : null,
+                  ),
+                  TextFormField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                    ),
+                    maxLines: 3,
+                  ),
+                  TextFormField(
+                    controller: fileUrlController,
+                    decoration: const InputDecoration(
+                      labelText: 'File URL',
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter a file URL'
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  Navigator.pop(dialogContext, true);
+                }
+              },
+              child: const Text('Save Changes'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSave != true || !mounted) {
+      titleController.dispose();
+      subjectController.dispose();
+      descriptionController.dispose();
+      fileUrlController.dispose();
+      return;
+    }
+
+    try {
+      await ApiService.updateStudyMaterial(
+        materialId: int.parse(material['id'].toString()),
+        userId: userId,
+        title: titleController.text.trim(),
+        subject: subjectController.text.trim(),
+        description: descriptionController.text.trim(),
+        fileUrl: fileUrlController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      await loadMaterials();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Study material updated successfully!'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Update failed: $e'),
+        ),
+      );
+    } finally {
+      titleController.dispose();
+      subjectController.dispose();
+      descriptionController.dispose();
+      fileUrlController.dispose();
+    }
+  }
+
   @override
   void dispose() {
     searchController.dispose();
@@ -416,41 +568,49 @@ class _StudyMaterialsPageState extends State<StudyMaterialsPage> {
                                         ],
                                       ),
                                     ),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          tooltip: 'Open material',
-                                          icon: const Icon(Icons.open_in_new),
-                                          onPressed: () => openMaterial(
-                                            material['fileUrl']?.toString() ??
-                                                '',
-                                          ),
-                                        ),
-                                        FutureBuilder<int?>(
-                                          future: AuthSession.getUserId(),
-                                          builder: (context, snapshot) {
-                                            final userId = snapshot.data;
-                                            final uploaderId = int.tryParse(
-                                              material['uploadedById']
-                                                  .toString(),
-                                            );
+                                    trailing: FutureBuilder<int?>(
+                                      future: AuthSession.getUserId(),
+                                      builder: (context, snapshot) {
+                                        final currentUserId = snapshot.data;
+                                        final uploaderId = int.tryParse(
+                                          material['uploadedById'].toString(),
+                                        );
 
-                                            if (userId == null ||
-                                                userId != uploaderId) {
-                                              return const SizedBox.shrink();
-                                            }
+                                        final isOwner = currentUserId != null &&
+                                            uploaderId != null &&
+                                            currentUserId == uploaderId;
 
-                                            return IconButton(
-                                              tooltip: 'Delete material',
-                                              icon: const Icon(
-                                                  Icons.delete_outline),
-                                              onPressed: () =>
-                                                  deleteMaterial(material),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              tooltip: 'Open material',
+                                              icon:
+                                                  const Icon(Icons.open_in_new),
+                                              onPressed: () => openMaterial(
+                                                material['fileUrl'].toString(),
+                                              ),
+                                            ),
+                                            if (isOwner) ...[
+                                              IconButton(
+                                                tooltip: 'Edit material',
+                                                icon: const Icon(Icons.edit),
+                                                onPressed: () =>
+                                                    editMaterial(material),
+                                              ),
+                                              IconButton(
+                                                tooltip: 'Delete material',
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  color: Colors.red,
+                                                ),
+                                                onPressed: () =>
+                                                    deleteMaterial(material),
+                                              ),
+                                            ],
+                                          ],
+                                        );
+                                      },
                                     ),
                                     onTap: () => openMaterial(
                                       material['fileUrl']?.toString() ?? '',
