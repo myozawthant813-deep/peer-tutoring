@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:peer_tutoring/models/incoming_tutoring_request.dart';
 import 'package:peer_tutoring/models/my_tutoring_request.dart';
 import 'package:peer_tutoring/models/tutoring_request.dart';
@@ -542,7 +543,7 @@ class ApiService {
 
   static Future<String> uploadProfileImage({
     required int userId,
-    required File imageFile,
+    required XFile imageFile,
   }) async {
     final uri = Uri.parse(
       '$baseUrl/api/users/$userId/profile-image',
@@ -550,14 +551,23 @@ class ApiService {
 
     final request = http.MultipartRequest('POST', uri);
 
+    final bytes = await imageFile.readAsBytes();
+
+    final filename = imageFile.name.isNotEmpty
+        ? imageFile.name
+        : 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
     request.files.add(
-      await http.MultipartFile.fromPath(
+      http.MultipartFile.fromBytes(
         'file',
-        imageFile.path,
+        bytes,
+        filename: filename,
+        contentType: http.MediaType('image', 'jpeg'),
       ),
     );
 
     final streamedResponse = await request.send();
+
     final response = await http.Response.fromStream(
       streamedResponse,
     );
@@ -567,6 +577,10 @@ class ApiService {
 
       return data['profileImage'].toString();
     }
+    print('Upload status: ${response.statusCode}');
+    print('Upload response: ${response.body}');
+    print('Image name: ${imageFile.name}');
+    print('Image size: ${bytes.length} bytes');
 
     throw Exception(
       'Failed to upload profile image: ${response.body}',

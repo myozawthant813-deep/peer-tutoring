@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:core';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,41 +27,40 @@ class _MyProfilePageState extends State<MyProfilePage> {
   bool isUploadingImage = false;
 
   Future<void> pickAndUploadProfileImage() async {
-    final userId = await AuthSession.getUserId();
-
-    if (userId == null || !mounted) return;
-
     try {
-      final picker = ImagePicker();
-
-      final XFile? selectedImage = await picker.pickImage(
+      final XFile? selectedImage = await ImagePicker().pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
         maxWidth: 1000,
       );
 
-      if (selectedImage == null) return;
+      if (selectedImage == null || !mounted) return;
+
+      final userId = await AuthSession.getUserId();
+
+      if (userId == null) {
+        throw Exception('No logged-in user found.');
+      }
 
       setState(() => isUploadingImage = true);
 
       final imagePath = await ApiService.uploadProfileImage(
         userId: userId,
-        imageFile: File(selectedImage.path),
+        imageFile: selectedImage,
       );
 
       if (!mounted) return;
 
-      final imageUrl = imagePath.startsWith('http')
-          ? imagePath
-          : '${ApiService.baseUrl}$imagePath';
-
       setState(() {
         profile = {
           ...?profile,
-          'profileImage': imageUrl,
+          'profileImage': imagePath,
         };
-        isUploadingImage = false;
       });
+
+      await loadProfile();
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -70,13 +70,15 @@ class _MyProfilePageState extends State<MyProfilePage> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => isUploadingImage = false);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Image upload failed: $e'),
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => isUploadingImage = false);
+      }
     }
   }
 
@@ -338,8 +340,13 @@ class _MyProfilePageState extends State<MyProfilePage> {
       );
     }
 
-    final imageUrl = profile!['profileImage']?.toString() ?? '';
+    final imagePath = profile!['profileImage']?.toString() ?? '';
 
+    final imageUrl = imagePath.isEmpty
+        ? ''
+        : imagePath.startsWith('http')
+            ? imagePath
+            : '${ApiService.baseUrl}$imagePath';
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
@@ -359,18 +366,26 @@ class _MyProfilePageState extends State<MyProfilePage> {
             Center(
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 55,
-                    backgroundColor: Colors.blue.shade100,
-                    backgroundImage:
-                        imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-                    child: imageUrl.isEmpty
-                        ? const Icon(
-                            Icons.person,
-                            size: 60,
-                            color: Colors.blue,
+                  ClipOval(
+                    child: imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              debugPrint('Profile image error: $error');
+                              return const SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: Icon(Icons.person, size: 50),
+                              );
+                            },
                           )
-                        : null,
+                        : const CircleAvatar(
+                            radius: 50,
+                            child: Icon(Icons.person, size: 50),
+                          ),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(

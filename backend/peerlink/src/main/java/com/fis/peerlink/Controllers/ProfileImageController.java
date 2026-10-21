@@ -63,6 +63,9 @@ public class ProfileImageController {
                     "Only JPG, PNG, and WEBP images are allowed");
         }
 
+
+        
+
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
