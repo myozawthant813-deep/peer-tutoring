@@ -92,10 +92,34 @@ class _FindTutorsPageState extends State<FindTutorsPage> {
             margin: const EdgeInsets.all(12),
             child: ListTile(
               contentPadding: const EdgeInsets.all(12),
-              leading: CircleAvatar(
-                radius: 28,
-                child: Text(
-                    user.name.isNotEmpty ? user.name[0].toUpperCase() : '?'),
+              leading: Builder(
+                builder: (context) {
+                  final imagePath = user.profileImage?.trim() ?? '';
+
+                  final imageUrl = imagePath.isEmpty
+                      ? ''
+                      : imagePath.startsWith('http')
+                          ? imagePath
+                          : '${ApiService.baseUrl}$imagePath';
+
+                  return CircleAvatar(
+                    radius: 28,
+                    backgroundImage:
+                        imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                    onBackgroundImageError: imageUrl.isNotEmpty
+                        ? (exception, stackTrace) {
+                            debugPrint('Tutor image error: $exception');
+                          }
+                        : null,
+                    child: imageUrl.isEmpty
+                        ? Text(
+                            user.name.isNotEmpty
+                                ? user.name[0].toUpperCase()
+                                : '?',
+                          )
+                        : null,
+                  );
+                },
               ),
               title: Text(
                 user.name,
