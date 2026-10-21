@@ -12,4 +12,6 @@ public interface StudyMaterialRepository
     List<StudyMaterial> findBySubjectContainingIgnoreCase(String subject);
 
     List<StudyMaterial> findByUploadedBy_Id(Long userId);
+
+    boolean existsByIdAndUploadedBy_Id(Long id, Long userId);
 }

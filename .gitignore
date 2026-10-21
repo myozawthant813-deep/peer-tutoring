@@ -1,0 +1,13 @@
+# User-uploaded profile pictures
+/uploads/profile-images/
+
+# Environment variables and secrets
+.env
+**/.env
+
+# Java build output
+**/target/
+
+# Flutter generated files
+**/.dart_tool/
+**/build/

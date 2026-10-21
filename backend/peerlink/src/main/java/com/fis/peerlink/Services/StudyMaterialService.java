@@ -108,4 +108,72 @@ public class StudyMaterialService {
 
         return result;
     }
+    @Transactional
+    public void deleteMaterial(Long materialId, Long userId) {
+
+        StudyMaterial material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Study material not found."));
+
+        User uploader = material.getUploadedBy();
+
+        if (uploader == null
+                || !String.valueOf(uploader.getId())
+                        .equals(String.valueOf(userId))) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only delete your own study materials.");
+        }
+
+        materialRepository.delete(material);
+    }
+
+    @Transactional
+    public Map<String, Object> updateMaterial(
+            Long materialId,
+            Long userId,
+            String title,
+            String description,
+            String subject,
+            String fileUrl) {
+
+        StudyMaterial material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Study material not found."));
+
+        User uploader = material.getUploadedBy();
+
+        if (uploader == null
+                || !String.valueOf(uploader.getId())
+                        .equals(String.valueOf(userId))) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only edit your own study materials.");
+        }
+
+        if (title == null || title.isBlank()
+                || subject == null || subject.isBlank()
+                || fileUrl == null || fileUrl.isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Title, subject, and file URL are required.");
+        }
+
+        material.setTitle(title.trim());
+        material.setDescription(
+                description == null ? "" : description.trim());
+        material.setSubject(subject.trim());
+        material.setFileUrl(fileUrl.trim());
+
+        StudyMaterial updatedMaterial = materialRepository.save(material);
+
+        return toMap(updatedMaterial);
+    }
+
+
 }
