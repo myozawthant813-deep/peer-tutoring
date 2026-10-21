@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:peer_tutoring/Services/auth_session.dart';
 import 'package:peer_tutoring/Services/api_service.dart';
 
@@ -18,6 +21,63 @@ class _MyProfilePageState extends State<MyProfilePage> {
   void initState() {
     super.initState();
     loadProfile();
+  }
+
+  bool isUploadingImage = false;
+
+  Future<void> pickAndUploadProfileImage() async {
+    final userId = await AuthSession.getUserId();
+
+    if (userId == null || !mounted) return;
+
+    try {
+      final picker = ImagePicker();
+
+      final XFile? selectedImage = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1000,
+      );
+
+      if (selectedImage == null) return;
+
+      setState(() => isUploadingImage = true);
+
+      final imagePath = await ApiService.uploadProfileImage(
+        userId: userId,
+        imageFile: File(selectedImage.path),
+      );
+
+      if (!mounted) return;
+
+      final imageUrl = imagePath.startsWith('http')
+          ? imagePath
+          : '${ApiService.baseUrl}$imagePath';
+
+      setState(() {
+        profile = {
+          ...?profile,
+          'profileImage': imageUrl,
+        };
+        isUploadingImage = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile picture updated!'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isUploadingImage = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Image upload failed: $e'),
+        ),
+      );
+    }
   }
 
   Future<void> loadProfile() async {
@@ -297,18 +357,38 @@ class _MyProfilePageState extends State<MyProfilePage> {
           padding: const EdgeInsets.all(20),
           children: [
             Center(
-              child: CircleAvatar(
-                radius: 55,
-                backgroundColor: Colors.blue.shade100,
-                backgroundImage:
-                    imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-                child: imageUrl.isEmpty
-                    ? const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.blue,
-                      )
-                    : null,
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 55,
+                    backgroundColor: Colors.blue.shade100,
+                    backgroundImage:
+                        imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                    child: imageUrl.isEmpty
+                        ? const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: Colors.blue,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed:
+                        isUploadingImage ? null : pickAndUploadProfileImage,
+                    icon: const Icon(Icons.camera_alt),
+                    label: Text(
+                      isUploadingImage
+                          ? 'Uploading...'
+                          : 'Change Profile Picture',
+                    ),
+                  ),
+                  if (isUploadingImage)
+                    const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: CircularProgressIndicator(),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 16),

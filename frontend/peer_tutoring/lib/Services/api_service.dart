@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -536,6 +537,39 @@ class ApiService {
 
     throw Exception(
       'Failed to update profile: ${response.body}',
+    );
+  }
+
+  static Future<String> uploadProfileImage({
+    required int userId,
+    required File imageFile,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/users/$userId/profile-image',
+    );
+
+    final request = http.MultipartRequest('POST', uri);
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(
+      streamedResponse,
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      return data['profileImage'].toString();
+    }
+
+    throw Exception(
+      'Failed to upload profile image: ${response.body}',
     );
   }
 }
