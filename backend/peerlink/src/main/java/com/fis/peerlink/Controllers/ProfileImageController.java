@@ -8,8 +8,11 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -62,9 +65,6 @@ public class ProfileImageController {
                     HttpStatus.BAD_REQUEST,
                     "Only JPG, PNG, and WEBP images are allowed");
         }
-
-
-        
 
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new ResponseStatusException(
@@ -119,4 +119,60 @@ public class ProfileImageController {
                     "Failed to save profile image");
         }
     }
+
+    // Public endpoint for viewing profile images.
+    @GetMapping(
+        value = "/uploads/profile-images/{filename:.+}",
+        produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
+    )
+    public ResponseEntity<Resource> getProfileImage(
+            @PathVariable String filename) {
+
+        // UUID filenames prevent arbitrary path traversal.
+        if (!filename.matches(
+                "^[0-9a-fA-F-]{36}\\.(jpg|png|webp)$")) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid image filename");
+        }
+
+        try {
+            Path imagePath = uploadDirectory
+                    .resolve(filename)
+                    .normalize();
+
+            if (!imagePath.startsWith(uploadDirectory)
+                    || !Files.isRegularFile(imagePath)) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Image not found");
+            }
+
+            Resource resource = new UrlResource(imagePath.toUri());
+
+            String contentType = Files.probeContentType(imagePath);
+
+            MediaType mediaType;
+
+            if (contentType != null
+                    && contentType.equals("image/png")) {
+                mediaType = MediaType.IMAGE_PNG;
+            } else if (contentType != null
+                    && contentType.equals("image/webp")) {
+                mediaType = MediaType.parseMediaType("image/webp");
+            } else {
+                mediaType = MediaType.IMAGE_JPEG;
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(resource);
+
+        } catch (IOException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to read profile image");
+        }
+    }
 }
+
