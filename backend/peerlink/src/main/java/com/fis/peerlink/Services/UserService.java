@@ -15,10 +15,12 @@ import com.fis.peerlink.Repositories.UserRepository;
 public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
-    public UserService (UserRepository userRepository, PasswordEncoder passwordEncoder){
+    public UserService (UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
     
    public User creteUser(User user) {
@@ -137,6 +139,20 @@ public User getUserById(Long id) {
             .orElseThrow(() -> new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "User not found with id: " + id));
+}
+
+public Map<String, Object> loginWithToken(String email, String password) {
+    User user = login(email, password);
+
+    String token = jwtService.generateToken(
+            user.getId(),
+            user.getEmail()
+    );
+
+    return Map.of(
+            "token", token,
+            "user", user
+    );
 }
 
 

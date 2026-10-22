@@ -32,12 +32,14 @@ public class UserController {
     }
 
 
+    
     @PostMapping("/login")
-    public User login(@RequestBody User user){
-        return userService.login(
-            user.getEmail(), 
-            user.getPassword());
-    }
+public Map<String, Object> login(@RequestBody Map<String, String> request) {
+    String email = request.get("email");
+    String password = request.get("password");
+
+    return userService.loginWithToken(email, password);
+}
 
 @PutMapping("/{id}/profile")
 public User updateProfile(
