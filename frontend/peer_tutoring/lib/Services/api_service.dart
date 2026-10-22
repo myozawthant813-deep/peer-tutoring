@@ -577,10 +577,6 @@ class ApiService {
 
       return data['profileImage'].toString();
     }
-    print('Upload status: ${response.statusCode}');
-    print('Upload response: ${response.body}');
-    print('Image name: ${imageFile.name}');
-    print('Image size: ${bytes.length} bytes');
 
     throw Exception(
       'Failed to upload profile image: ${response.body}',

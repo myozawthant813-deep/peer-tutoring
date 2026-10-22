@@ -1,5 +1,7 @@
 package com.fis.peerlink.Models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -9,13 +11,17 @@ public class User {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
 
-    private long id;
+    private Long id;
     
     private String name;
 
     @Column (nullable = false, unique = true)
      private String email;
-     private String password;
+
+   @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+   private String password;
+
+
      private String university;
      private String major;
      private Integer year;
@@ -30,12 +36,12 @@ public class User {
      public User(){
 
      }
-     public long getId() {
+     public Long getId() {
         return id;
     }
 
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:peer_tutoring/Services/auth_session.dart';
 import 'package:peer_tutoring/pages/auth/login_page.dart';
+import 'package:peer_tutoring/pages/auth/register_page.dart';
 import 'package:peer_tutoring/pages/home/home_page.dart';
 import 'package:peer_tutoring/models/user.dart';
 
