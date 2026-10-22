@@ -27,21 +27,25 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // Authenticate with Spring Boot.
-      final User user = await ApiService.login(
+      final result = await ApiService.login(
         emailController.text.trim(),
         passwordController.text,
       );
 
-      // Save the authenticated user's information.
+      final userJson = result['user'] as Map<String, dynamic>;
+      final user = User.fromJson(userJson);
+      final token = result['token'] as String;
+
+      await AuthSession.saveToken(token);
+
       await AuthSession.saveUser(user);
 
       if (!mounted) return;
 
-      // Navigate to HomePage.
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => HomePage(user: user),
+          builder: (_) => HomePage(user: user),
         ),
       );
     } catch (e) {
