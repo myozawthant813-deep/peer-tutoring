@@ -46,6 +46,7 @@ class User {
       'id': id,
       'name': name,
       'email': email,
+      'password': password,
       'university': university,
       'major': major,
       'year': year,
