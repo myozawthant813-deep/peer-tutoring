@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:peer_tutoring/Services/auth_session.dart';
-import 'package:peer_tutoring/models/user.dart';
-import 'package:peer_tutoring/pages/create_study_group_page.dart';
-import 'package:peer_tutoring/pages/study_group_deatils_page.dart';
-import '../Services/api_service.dart';
+import 'package:peer_tutoring/Services/api_service.dart';
 
 class StudyGroupsPage extends StatefulWidget {
+  final int userId;
+
   const StudyGroupsPage({
     super.key,
+    required this.userId,
   });
 
   @override
@@ -15,72 +14,259 @@ class StudyGroupsPage extends StatefulWidget {
 }
 
 class _StudyGroupsPageState extends State<StudyGroupsPage> {
-  List<dynamic> groups = [];
-  bool isLoading = true;
-  String? errorMessage;
+  late Future<List<dynamic>> groupsFuture;
 
-  final TextEditingController searchController = TextEditingController();
+  final Set<int> processing = {};
+  final Map<int, Future<bool>> membershipChecks = {};
 
   @override
   void initState() {
     super.initState();
-    loadGroups();
-    loadCurrentUser();
+    _loadGroups();
   }
 
-  User? currentUser;
-  bool isLoadingUser = true;
+  void _loadGroups() {
+    groupsFuture = ApiService.getStudyGroups();
+    membershipChecks.clear();
+  }
 
-  Future<void> loadCurrentUser() async {
-    final user = await AuthSession.getUser();
-
-    if (!mounted) return;
-
+  Future<void> _refresh() async {
     setState(() {
-      currentUser = user;
-      isLoadingUser = false;
+      _loadGroups();
     });
 
-    if (user == null && mounted) {
+    await groupsFuture;
+  }
+
+  // Check whether the current student belongs to this group.
+  Future<bool> _isMember(int groupId) {
+    return membershipChecks.putIfAbsent(
+      groupId,
+      () async {
+        try {
+          final members = await ApiService.getStudyGroupMembers(groupId);
+
+          return members.any((member) {
+            final memberId = member['userId'] ??
+                member['user']?['id'] ??
+                member['studentId'] ??
+                member['id'];
+
+            return memberId != null &&
+                memberId.toString() == widget.userId.toString();
+          });
+        } catch (e) {
+          debugPrint(
+            'Failed to check membership for group $groupId: $e',
+          );
+
+          rethrow;
+        }
+      },
+    );
+  }
+
+  Future<void> _joinGroup(int groupId) async {
+    if (processing.contains(groupId)) return;
+
+    setState(() {
+      processing.add(groupId);
+    });
+
+    try {
+      await ApiService.joinStudyGroup(
+        groupId: groupId,
+        userId: widget.userId,
+      );
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please log in to access study groups.'),
+          content: Text('Joined study group!'),
+        ),
+      );
+
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not join group: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          processing.remove(groupId);
+        });
+      }
+    }
+  }
+
+  Future<void> _leaveGroup(int groupId) async {
+    if (processing.contains(groupId)) return;
+
+    setState(() {
+      processing.add(groupId);
+    });
+
+    try {
+      await ApiService.leaveStudyGroup(
+        groupId: groupId,
+        userId: widget.userId,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Left study group.'),
+        ),
+      );
+
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not leave group: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          processing.remove(groupId);
+        });
+      }
+    }
+  }
+
+  Future<void> _showMembers(
+    int groupId,
+    String groupName,
+  ) async {
+    try {
+      final members = await ApiService.getStudyGroupMembers(groupId);
+
+      if (!mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) {
+          return SizedBox(
+            height: 400,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    '$groupName — Members',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                Expanded(
+                  child: members.isEmpty
+                      ? const Center(
+                          child: Text('No members yet.'),
+                        )
+                      : ListView.builder(
+                          itemCount: members.length,
+                          itemBuilder: (context, index) {
+                            final member = members[index];
+
+                            final user =
+                                member['user'] is Map ? member['user'] : null;
+
+                            final name = member['name'] ??
+                                member['userName'] ??
+                                user?['name'] ??
+                                'Student';
+
+                            final email =
+                                member['email'] ?? user?['email'] ?? '';
+
+                            return ListTile(
+                              leading: const CircleAvatar(
+                                child: Icon(Icons.person),
+                              ),
+                              title: Text(name.toString()),
+                              subtitle: Text(email.toString()),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load members: $e'),
         ),
       );
     }
   }
 
-  Future<void> loadGroups({String subject = ''}) async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
+  Widget _buildMembershipButton(
+    int groupId,
+    bool busy,
+  ) {
+    return FutureBuilder<bool>(
+      future: _isMember(groupId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          );
+        }
 
-    try {
-      final result = subject.trim().isEmpty
-          ? await ApiService.getStudyGroups()
-          : await ApiService.searchStudyGroups(subject.trim());
+        // Don't incorrectly show Join if membership couldn't
+        // be checked because of an API error.
+        if (snapshot.hasError) {
+          return TextButton(
+            onPressed: () {
+              setState(() {
+                membershipChecks.remove(groupId);
+              });
+            },
+            child: const Text('Retry'),
+          );
+        }
 
-      if (!mounted) return;
+        final isMember = snapshot.data ?? false;
 
-      setState(() {
-        groups = result;
-        isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
+        return ElevatedButton(
+          onPressed: busy
+              ? null
+              : () {
+                  if (isMember) {
+                    _leaveGroup(groupId);
+                  } else {
+                    _joinGroup(groupId);
+                  }
+                },
+          child: Text(
+            busy
+                ? 'Please wait...'
+                : isMember
+                    ? 'Leave Group'
+                    : 'Join Group',
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -88,210 +274,124 @@ class _StudyGroupsPageState extends State<StudyGroupsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Study Groups'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => loadGroups(
-              subject: searchController.text,
-            ),
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by subject...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  tooltip: 'Clear search',
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    searchController.clear();
-                    loadGroups();
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onSubmitted: (value) => loadGroups(subject: value),
-            ),
-          ),
-          Expanded(
-            child: buildGroupList(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final user = currentUser;
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: FutureBuilder<List<dynamic>>(
+          future: groupsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
 
-          if (user == null || user.id == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please log in again.'),
-              ),
-            );
-            return;
-          }
-
-          final created = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreateStudyGroupPage(
-                userId: user.id!,
-              ),
-            ),
-          );
-
-          if (created == true && mounted) {
-            loadGroups(subject: searchController.text);
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Create Group'),
-      ),
-    );
-  }
-
-  Widget buildGroupList() {
-    if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: Colors.red,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                errorMessage!,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () => loadGroups(
-                  subject: searchController.text,
-                ),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (groups.isEmpty) {
-      return const Center(
-        child: Text(
-          'No study groups found.\nCreate one to get started!',
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => loadGroups(
-        subject: searchController.text,
-      ),
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-        itemCount: groups.length,
-        itemBuilder: (context, index) {
-          final group = Map<String, dynamic>.from(
-            groups[index] as Map,
-          );
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              leading: CircleAvatar(
-                child: Text(
-                  (group['subject'] ?? '?')
-                      .toString()
-                      .substring(0, 1)
-                      .toUpperCase(),
-                ),
-              ),
-              title: Text(
-                (group['name'] ?? 'Untitled Group').toString(),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Subject: ${group['subject'] ?? 'N/A'}'),
-                    const SizedBox(height: 4),
-                    Text(
-                      (group['description'] ?? '').toString(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.people_outline,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 5),
-                        Text('${group['memberCount'] ?? 0} members'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                final user = currentUser;
-
-                if (user == null || user.id == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please log in again.'),
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StudyGroupDetailsPage(
-                      groupId: int.parse(group['id'].toString()),
-                      userId: user.id!,
+            if (snapshot.hasError) {
+              return ListView(
+                children: [
+                  const SizedBox(height: 120),
+                  const Center(
+                    child: Text(
+                      'Could not load study groups.',
                     ),
                   ),
-                ).then((_) {
-                  if (mounted) {
-                    loadGroups(subject: searchController.text);
-                  }
-                });
+                  Center(
+                    child: TextButton(
+                      onPressed: _refresh,
+                      child: const Text('Try Again'),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final groups = snapshot.data ?? [];
+
+            if (groups.isEmpty) {
+              return ListView(
+                children: const [
+                  SizedBox(height: 150),
+                  Center(
+                    child: Text(
+                      'No study groups available yet.',
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: groups.length,
+              itemBuilder: (context, index) {
+                final group = groups[index];
+
+                final groupId = (group['id'] as num).toInt();
+
+                final name = group['name']?.toString() ?? 'Study Group';
+
+                final subject = group['subject']?.toString() ?? '';
+
+                final description = group['description']?.toString() ?? '';
+
+                final count = group['memberCount'] ?? 0;
+
+                final busy = processing.contains(groupId);
+
+                return Card(
+                  margin: const EdgeInsets.only(
+                    bottom: 14,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (subject.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text('Subject: $subject'),
+                        ],
+                        if (description.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(description),
+                        ],
+                        const SizedBox(height: 8),
+                        Text('Members: $count'),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () => _showMembers(
+                                groupId,
+                                name,
+                              ),
+                              icon: const Icon(
+                                Icons.people,
+                              ),
+                              label: const Text(
+                                'View Members',
+                              ),
+                            ),
+                            _buildMembershipButton(
+                              groupId,
+                              busy,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               },
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

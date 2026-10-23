@@ -1,6 +1,7 @@
 package com.fis.peerlink.Controllers;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fis.peerlink.Models.TutoringRequest;
 import com.fis.peerlink.Models.TutoringSession;
 import com.fis.peerlink.Repositories.TutoringSessionRepository;
 import com.fis.peerlink.Services.TutoringSessionService;
@@ -103,5 +105,62 @@ public ResponseEntity<?> getSessionByRequest(
                             Map.of("error", "No session found for this request.")
                     )
             );
+}
+@GetMapping("/tutor/{tutorId}")
+public ResponseEntity<?> getTutorSessions(
+        @PathVariable Long tutorId) {
+
+    List<TutoringSession> sessions =
+            sessionRepository.findByTutoringRequest_Tutor_Id(tutorId);
+
+    List<Map<String, Object>> result = sessions.stream()
+            .map(session -> {
+                TutoringRequest request =
+                        session.getTutoringRequest();
+
+                return Map.<String, Object>of(
+                        "id", session.getId(),
+                        "requestId", request.getId(),
+                        "subject", request.getSubject(),
+                        "studentName", request.getRequester().getName(),
+                        "scheduledAt", session.getScheduledAt().toString(),
+                        "meetingLink",
+                        session.getMeetingLink() == null
+                                ? "" : session.getMeetingLink(),
+                        "status", session.getStatus()
+                );
+            })
+            .toList();
+
+    return ResponseEntity.ok(result);
+}
+
+@GetMapping("/student/{studentId}")
+public ResponseEntity<?> getStudentSessions(
+        @PathVariable Long studentId) {
+
+    List<TutoringSession> sessions =
+            sessionRepository.findByTutoringRequest_Requester_Id(studentId);
+
+    List<Map<String, Object>> result = sessions.stream()
+            .map(session -> {
+                TutoringRequest request =
+                        session.getTutoringRequest();
+
+                return Map.<String, Object>of(
+                        "id", session.getId(),
+                        "requestId", request.getId(),
+                        "subject", request.getSubject(),
+                        "tutorName", request.getTutor().getName(),
+                        "scheduledAt", session.getScheduledAt().toString(),
+                        "meetingLink",
+                        session.getMeetingLink() == null
+                                ? "" : session.getMeetingLink(),
+                        "status", session.getStatus()
+                );
+            })
+            .toList();
+
+    return ResponseEntity.ok(result);
 }
 }

@@ -316,7 +316,8 @@ class ApiService {
     }
 
     throw Exception(
-      'Failed to load tutor sessions: ${response.statusCode}',
+      'Failed to load tutor sessions: '
+      '${response.statusCode} — ${response.body}',
     );
   }
 
@@ -331,7 +332,8 @@ class ApiService {
     }
 
     throw Exception(
-      'Failed to load student sessions: ${response.statusCode}',
+      'Failed to load student sessions: '
+      '${response.statusCode} — ${response.body}',
     );
   }
 
