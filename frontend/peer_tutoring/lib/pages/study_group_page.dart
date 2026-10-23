@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:peer_tutoring/Services/api_service.dart';
+import 'package:peer_tutoring/Services/auth_session.dart';
+import 'package:peer_tutoring/models/user.dart';
+import 'package:peer_tutoring/pages/create_study_group_page.dart';
+import 'package:peer_tutoring/pages/study_group_deatils_page.dart';
+import '../Services/api_service.dart';
 
 class StudyGroupsPage extends StatefulWidget {
   final int userId;
@@ -14,385 +18,681 @@ class StudyGroupsPage extends StatefulWidget {
 }
 
 class _StudyGroupsPageState extends State<StudyGroupsPage> {
-  late Future<List<dynamic>> groupsFuture;
+  static const Color backgroundColor = Color(0xFFF3F1FA);
+  static const Color primaryColor = Color(0xFF6C63FF);
+  static const Color textColor = Color(0xFF292943);
+  static const Color mutedColor = Color(0xFF85859B);
+  static const Color cardColor = Colors.white;
+  static const Color softPurple = Color(0xFFEAE7FF);
+  static const Color softGreen = Color(0xFFE0F5E9);
 
-  final Set<int> processing = {};
-  final Map<int, Future<bool>> membershipChecks = {};
+  List<dynamic> groups = [];
+  bool isLoading = true;
+  bool isLoadingUser = true;
+  String? errorMessage;
+
+  final TextEditingController searchController = TextEditingController();
+
+  User? currentUser;
 
   @override
   void initState() {
     super.initState();
-    _loadGroups();
+    loadGroups();
+    loadCurrentUser();
   }
 
-  void _loadGroups() {
-    groupsFuture = ApiService.getStudyGroups();
-    membershipChecks.clear();
-  }
+  Future<void> loadCurrentUser() async {
+    final user = await AuthSession.getUser();
 
-  Future<void> _refresh() async {
+    if (!mounted) return;
+
     setState(() {
-      _loadGroups();
+      currentUser = user;
+      isLoadingUser = false;
     });
 
-    await groupsFuture;
+    if (user == null) {
+      _showMessage('Please log in to access study groups.');
+    }
   }
 
-  // Check whether the current student belongs to this group.
-  Future<bool> _isMember(int groupId) {
-    return membershipChecks.putIfAbsent(
-      groupId,
-      () async {
-        try {
-          final members = await ApiService.getStudyGroupMembers(groupId);
+  Future<void> loadGroups({String subject = ''}) async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
 
-          return members.any((member) {
-            final memberId = member['userId'] ??
-                member['user']?['id'] ??
-                member['studentId'] ??
-                member['id'];
+    try {
+      final result = subject.trim().isEmpty
+          ? await ApiService.getStudyGroups()
+          : await ApiService.searchStudyGroups(subject.trim());
 
-            return memberId != null &&
-                memberId.toString() == widget.userId.toString();
-          });
-        } catch (e) {
-          debugPrint(
-            'Failed to check membership for group $groupId: $e',
-          );
+      if (!mounted) return;
 
-          rethrow;
-        }
-      },
+      setState(() {
+        groups = result;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> createGroup() async {
+    final user = currentUser;
+
+    if (isLoadingUser) return;
+
+    if (user == null || user.id == null) {
+      _showMessage('Please log in again.');
+      return;
+    }
+
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateStudyGroupPage(
+          userId: user.id!,
+        ),
+      ),
     );
-  }
 
-  Future<void> _joinGroup(int groupId) async {
-    if (processing.contains(groupId)) return;
-
-    setState(() {
-      processing.add(groupId);
-    });
-
-    try {
-      await ApiService.joinStudyGroup(
-        groupId: groupId,
-        userId: widget.userId,
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Joined study group!'),
-        ),
-      );
-
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not join group: $e'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          processing.remove(groupId);
-        });
-      }
+    if (created == true && mounted) {
+      await loadGroups(subject: searchController.text);
     }
   }
 
-  Future<void> _leaveGroup(int groupId) async {
-    if (processing.contains(groupId)) return;
+  Future<void> openGroup(Map<String, dynamic> group) async {
+    final user = currentUser;
 
-    setState(() {
-      processing.add(groupId);
-    });
+    if (user == null || user.id == null) {
+      _showMessage('Please log in again.');
+      return;
+    }
 
-    try {
-      await ApiService.leaveStudyGroup(
-        groupId: groupId,
-        userId: widget.userId,
-      );
+    final groupId = int.tryParse(group['id']?.toString() ?? '');
 
-      if (!mounted) return;
+    if (groupId == null) {
+      _showMessage('Invalid study group.');
+      return;
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Left study group.'),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudyGroupDetailsPage(
+          groupId: groupId,
+          userId: user.id!,
         ),
-      );
+      ),
+    );
 
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not leave group: $e'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          processing.remove(groupId);
-        });
-      }
+    if (mounted) {
+      await loadGroups(subject: searchController.text);
     }
   }
 
-  Future<void> _showMembers(
-    int groupId,
-    String groupName,
-  ) async {
-    try {
-      final members = await ApiService.getStudyGroupMembers(groupId);
+  void _showMessage(String message) {
+    if (!mounted) return;
 
-      if (!mounted) return;
-
-      await showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        builder: (context) {
-          return SizedBox(
-            height: 400,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    '$groupName — Members',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                Expanded(
-                  child: members.isEmpty
-                      ? const Center(
-                          child: Text('No members yet.'),
-                        )
-                      : ListView.builder(
-                          itemCount: members.length,
-                          itemBuilder: (context, index) {
-                            final member = members[index];
-
-                            final user =
-                                member['user'] is Map ? member['user'] : null;
-
-                            final name = member['name'] ??
-                                member['userName'] ??
-                                user?['name'] ??
-                                'Student';
-
-                            final email =
-                                member['email'] ?? user?['email'] ?? '';
-
-                            return ListTile(
-                              leading: const CircleAvatar(
-                                child: Icon(Icons.person),
-                              ),
-                              title: Text(name.toString()),
-                              subtitle: Text(email.toString()),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
         SnackBar(
-          content: Text('Could not load members: $e'),
-        ),
-      );
-    }
-  }
-
-  Widget _buildMembershipButton(
-    int groupId,
-    bool busy,
-  ) {
-    return FutureBuilder<bool>(
-      future: _isMember(groupId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-            ),
-          );
-        }
-
-        // Don't incorrectly show Join if membership couldn't
-        // be checked because of an API error.
-        if (snapshot.hasError) {
-          return TextButton(
-            onPressed: () {
-              setState(() {
-                membershipChecks.remove(groupId);
-              });
-            },
-            child: const Text('Retry'),
-          );
-        }
-
-        final isMember = snapshot.data ?? false;
-
-        return ElevatedButton(
-          onPressed: busy
-              ? null
-              : () {
-                  if (isMember) {
-                    _leaveGroup(groupId);
-                  } else {
-                    _joinGroup(groupId);
-                  }
-                },
-          child: Text(
-            busy
-                ? 'Please wait...'
-                : isMember
-                    ? 'Leave Group'
-                    : 'Join Group',
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-        );
-      },
-    );
+        ),
+      );
+  }
+
+  String _initial(dynamic value) {
+    final text = (value ?? '').toString().trim();
+    return text.isEmpty ? '?' : text[0].toUpperCase();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Study Groups'),
+        backgroundColor: backgroundColor,
+        foregroundColor: textColor,
+        elevation: 0,
+        title: const Text(
+          'Study Groups',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: textColor,
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: isLoading
+                ? null
+                : () => loadGroups(subject: searchController.text),
+            icon: Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(
+                Icons.refresh_rounded,
+                color: primaryColor,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: FutureBuilder<List<dynamic>>(
-          future: groupsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: isLoadingUser ? null : createGroup,
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          'Create Group',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeroBanner(),
+            _buildSearchBar(),
+            Expanded(child: _buildGroupList()),
+          ],
+        ),
+      ),
+    );
+  }
 
-            if (snapshot.hasError) {
-              return ListView(
+  Widget _buildHeroBanner() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: primaryColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.20),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 120),
-                  const Center(
-                    child: Text(
-                      'Could not load study groups.',
+                  const Text(
+                    'Learn together ✨',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                  Center(
-                    child: TextButton(
-                      onPressed: _refresh,
-                      child: const Text('Try Again'),
+                  const SizedBox(height: 9),
+                  Text(
+                    'Find your study partners, share knowledge, and reach your goals together.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      fontSize: 13,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${groups.length} ${groups.length == 1 ? 'group' : 'groups'} available',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
-              );
-            }
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 65,
+              height: 65,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: const Icon(
+                Icons.groups_rounded,
+                color: Colors.white,
+                size: 37,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            final groups = snapshot.data ?? [];
-
-            if (groups.isEmpty) {
-              return ListView(
-                children: const [
-                  SizedBox(height: 150),
-                  Center(
-                    child: Text(
-                      'No study groups available yet.',
-                    ),
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: TextField(
+        controller: searchController,
+        textInputAction: TextInputAction.search,
+        onSubmitted: (value) => loadGroups(subject: value),
+        decoration: InputDecoration(
+          hintText: 'Search by subject...',
+          hintStyle: const TextStyle(color: mutedColor),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: primaryColor,
+          ),
+          suffixIcon: searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: mutedColor,
                   ),
-                ],
-              );
-            }
+                  onPressed: () {
+                    searchController.clear();
+                    loadGroups();
+                  },
+                ),
+          filled: true,
+          fillColor: cardColor,
+          contentPadding: const EdgeInsets.symmetric(vertical: 17),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(19),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(19),
+            borderSide: BorderSide(
+              color: primaryColor.withValues(alpha: 0.08),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(19),
+            borderSide: const BorderSide(
+              color: primaryColor,
+              width: 1.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildGroupList() {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: primaryColor),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: _buildEmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: 'Could not load groups',
+            subtitle: errorMessage!,
+            buttonText: 'Try Again',
+            onPressed: () => loadGroups(
+              subject: searchController.text,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (groups.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: _buildEmptyState(
+            icon: Icons.groups_rounded,
+            title: 'No study groups found',
+            subtitle: searchController.text.trim().isEmpty
+                ? 'Create the first group and start learning together.'
+                : 'Try another subject or clear your search.',
+            buttonText: searchController.text.trim().isEmpty
+                ? 'Create Group'
+                : 'Clear Search',
+            onPressed: searchController.text.trim().isEmpty
+                ? createGroup
+                : () {
+                    searchController.clear();
+                    loadGroups();
+                  },
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: primaryColor,
+      onRefresh: () => loadGroups(
+        subject: searchController.text,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 1000
+              ? 3
+              : constraints.maxWidth >= 650
+                  ? 2
+                  : 1;
+
+          if (columns == 1) {
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
               itemCount: groups.length,
               itemBuilder: (context, index) {
-                final group = groups[index];
+                final group = Map<String, dynamic>.from(
+                  groups[index] as Map,
+                );
 
-                final groupId = (group['id'] as num).toInt();
+                return _buildGroupCard(group);
+              },
+            );
+          }
 
-                final name = group['name']?.toString() ?? 'Study Group';
+          return GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              mainAxisExtent: 250,
+            ),
+            itemCount: groups.length,
+            itemBuilder: (context, index) {
+              final group = Map<String, dynamic>.from(
+                groups[index] as Map,
+              );
 
-                final subject = group['subject']?.toString() ?? '';
+              return _buildGroupCard(group);
+            },
+          );
+        },
+      ),
+    );
+  }
 
-                final description = group['description']?.toString() ?? '';
+  Widget _buildGroupCard(Map<String, dynamic> group) {
+    final name = (group['name'] ?? 'Untitled Group').toString();
+    final subject = (group['subject'] ?? 'General').toString();
+    final description = (group['description'] ?? '').toString().trim();
+    final memberCount = group['memberCount'] ?? 0;
 
-                final count = group['memberCount'] ?? 0;
-
-                final busy = processing.contains(groupId);
-
-                return Card(
-                  margin: const EdgeInsets.only(
-                    bottom: 14,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => openGroup(group),
+        borderRadius: BorderRadius.circular(25),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 53,
+                    height: 53,
+                    decoration: BoxDecoration(
+                      color: softPurple,
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _initial(subject),
+                        style: const TextStyle(
+                          color: primaryColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                  const SizedBox(width: 13),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           name,
-                          style: Theme.of(context).textTheme.titleLarge,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            height: 1.3,
+                          ),
                         ),
-                        if (subject.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text('Subject: $subject'),
-                        ],
-                        if (description.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(description),
-                        ],
-                        const SizedBox(height: 8),
-                        Text('Members: $count'),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () => _showMembers(
-                                groupId,
-                                name,
-                              ),
-                              icon: const Icon(
-                                Icons.people,
-                              ),
-                              label: const Text(
-                                'View Members',
-                              ),
+                        const SizedBox(height: 7),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: softPurple,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            subject,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: primaryColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
                             ),
-                            _buildMembershipButton(
-                              groupId,
-                              busy,
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                );
-              },
-            );
-          },
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: mutedColor,
+                    size: 16,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 17),
+              Expanded(
+                child: Text(
+                  description.isEmpty
+                      ? 'No description provided yet.'
+                      : description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: mutedColor,
+                    fontSize: 13,
+                    height: 1.6,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: softGreen,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.people_alt_rounded,
+                          size: 17,
+                          color: Color(0xFF258653),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$memberCount members',
+                          style: const TextStyle(
+                            color: Color(0xFF258653),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'View group',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String buttonText,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: softPurple,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: primaryColor,
+              size: 38,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: textColor,
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: mutedColor,
+              fontSize: 13,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 22),
+          ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 22,
+                vertical: 14,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            child: Text(buttonText),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _initial(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return '?';
+  }
+
+  return value.trim()[0].toUpperCase();
 }
