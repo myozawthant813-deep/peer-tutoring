@@ -320,7 +320,7 @@ class _FindTutorsPageState extends State<FindTutorsPage> {
               crossAxisCount: 2,
               crossAxisSpacing: 20,
               mainAxisSpacing: 20,
-              mainAxisExtent: 220,
+              mainAxisExtent: 260,
             ),
             itemCount: results.length,
             itemBuilder: (context, index) {
