@@ -1,17 +1,25 @@
 #!/bin/bash
 set -e
 
-# Install Flutter SDK
-git clone https://github.com/flutter/flutter.git --depth 1 --branch 3.27.1 /tmp/flutter
+echo "Installing Flutter SDK..."
+
+git clone https://github.com/flutter/flutter.git \
+  --depth 1 \
+  --branch 3.27.1 \
+  /tmp/flutter
 
 export PATH="/tmp/flutter/bin:$PATH"
 
-# Verify Flutter installation
+echo "Checking Flutter installation..."
 flutter --version
 
-# Enable Flutter Web
+echo "Enabling Flutter Web..."
 flutter config --enable-web
 
-# Get dependencies and build
+echo "Installing dependencies..."
 flutter pub get
+
+echo "Building PeerLink..."
 flutter build web --release
+
+echo "Flutter Web build completed successfully."
